@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markmap</title>
+    <style>
+      svg.markmap {
+        width: 100%;
+        height: 100vh;
+      }
+    </style>
+    <script>
+        window.markmap = {
+            /** @type AutoLoaderOptions */
+            autoLoader: {
+                toolbar: true, // Enable toolbar
+            },
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+  </head>
+  <body>
+    <div class="markmap">
+      <script type="text/template">
+        ---
+        title: markmap
+        markmap:
+          initialExpandLevel: 4
+          colorFreezeLevel: 3
+          maxWidth: 300
+          embedAssets: true
+        ---
+
+        # Security Metric
+
+        ## High Request
+
+        ### Just a normal day - Launch Caimpaign, Advertisement, Special day offer etc.
+
+        ### Under Attack
+
+        - Req X Country - See if there any country that have more request than normal, then probably can consider to block the country
+          - ```sql
+            SELECT country, COUNT(*) AS request_count
+            FROM access_log
+            WHERE timestamp >= NOW() - INTERVAL 1 DAY
+            GROUP BY country
+            ORDER BY request_count DESC
+            LIMIT 10;
+            ```
+          - data size: 1000000
+        - Req X IP - See if there any IP that have more request than normal, find the IP to limit or block it
+        - Req X URI - See if there any URI that have more request than normal, find the URI to know which URI might have problem, and perform limit or blocking etc.
+        - Req X User Agent - See if there any User Agent that have more request than normal, could be some bot trying to attack, or some user agent that have problem
+
+        ### DNS Problem (Being Poisoned)
+
+        - Not sure how to check about this
+
+        ## High Bandwidth - Total, ResBody, ReqBody
+
+        ### Under Attack (Such as cc attack)
+
+        - Bandwidth X IP - Check individual IP bandwidth usage, probably need to limit I download as well.
+        - Bandwidth X Country - More toward check for do we need to deploy more server to the country or not.
+        - Bandwidth X Cache Rate - Check if the cache rate is too low, then probably need to increase the cache rate.
+        - Bandwidth X URI - See which URI have more bandwidth, then check if the URI is under attack or not
+
+        ### It just a normal day
+
+        - I cant imagine a normal day that have high bandwidth, but if there is, then probably need to check the bandwidth usage by IP, Country, Cache Rate, and URI.
+
+        ## High Latency
+
+        ### Under Attack
+
+        - Latency high with much request, could be under attacking
+
+        ### Server slowdown
+
+        - Latency High but request not much with bandwidth look ok, probably need to check the server performance
+        - Upstream IO traffic time- Check if the upstream IO traffic is it too high, then probably need to check the upstream server
+
+        - Latency X Country - Check if the latency just happened on some specific country
+        - Latency X IP - See which client experience high latency
+        - Latency X User Agent - See which device experience high latency
+        - Latency X URI - Check which endpoint experience high latency
+
+        ## High
+
+        ### 4XX & 5XX
+
+        - Error X Req - Check if the increase in error is it normal due to the increate in request, probabily need determine with error as well
+        - Error X SSL, TLS - Check if the error is it due to the old SSL, TLS version, if so just block the old version
+        - Error X IP - See which IP have more error, then see either to block or further investigation required
+        - Error X Country - See which country have more error, we can ban the country if there is too much error or see is there any adjustment/fix to the country
+        - Error X User Agent - See which User Agent (Could be browser, phone, etc) have more error, then check if the page need to be fix or need to block the user agent
+
+        ## High Connection - Active, Waiting, Writing, Reading
+
+        ### Someone try to extablish as many connection as possible
+
+        ## Upstream Load
+
+        ### Cache Miss
+
+        - Cache Miss Rate - Check if the cache miss rate is too high, then probably need to increase the cache miss rate
+      </script>
+    </div>
+  </body>
+</html>
