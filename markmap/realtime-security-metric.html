@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markmap</title>
+    <style>
+      svg.markmap {
+        width: 100%;
+        height: 100vh;
+      }
+    </style>
+    <script>
+      window.markmap = {
+        /** @type AutoLoaderOptions */
+        autoLoader: {
+          toolbar: true, // Enable toolbar
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+  </head>
+  <body>
+    <h1 style="text-align: center"><a href="/">Homepage</a></h1>
+    <h2 style="text-align: center">Realtime Security Metric Mindmap</h2>
+    <div class="markmap">
+      <script type="text/template">
+        ---
+        title: RealtimeSecurityMetric
+        markmap:
+          initialExpandLevel: 4
+          colorFreezeLevel: 3
+          maxWidth: 300
+          embedAssets: true
+        ---
+
+        # RealtimeSecurityMetric
+
+        Use to keep track and observe the live traffic through the metrics. The further analytics graph use to provide the simple illustration for a quick action/response to perform.
+
+        ## 1. High Request
+
+        ### 1.1. Observation
+
+        - Overall
+          - ```sql
+              -- 1. General Request
+              SELECT
+              count(*) as total_request
+              FROM reqs
+            ```
+
+        ### 1.2. Just a normal day - Launch Caimpaign, Advertisement, Special day offer etc.
+
+        ### 1.3. Under Attack
+
+        - Req X Country - See if there any country that have more request than normal, then probably can consider to block the country
+          - ```sql
+                -- 1.3.1. Request from each country
+                SELECT
+                client_country,
+                count(*) as total_request
+                FROM reqs
+                GROUP BY client_country
+                ORDER BY total_request DESC
+                LIMIT 10
+            ```
+          - ```sql
+              -- 1.3.2. Request from each city
+              SELECT
+              client_city,
+              count(*) as total_request
+              FROM reqs
+              GROUP BY client_city
+              ORDER BY total_request DESC
+              LIMIT 10
+            ```
+        - Req X IP - See if there any IP that have more request than normal, find the IP to limit or block it
+          - ```sql
+              -- 1.3.3. Request from each IP
+              SELECT
+              client_ip,
+              count(*) as total_request
+              FROM reqs
+              GROUP BY client_ip
+              ORDER BY total_request DESC
+              LIMIT 10
+            ```
+        - Req X URI - See if there any URI that have more request than normal, find the URI to know which URI might have problem, and perform limit or blocking etc.
+          - ```sql
+              -- 1.3.4. Request from each URI
+              SELECT
+              uri,
+              count(*) as total_request
+              FROM reqs
+              GROUP BY uri
+              ORDER BY total_request DESC
+              LIMIT 10
+            ```
+        - Req X User Agent - See if there any User Agent that have more request than normal, could be some bot trying to attack, or some user agent that have problem
+          - ```sql
+              -- 1.3.5. Request from each User Agent
+              SELECT
+              user_agent,
+              count(*) as total_request
+              FROM reqs
+              GROUP BY user_agent
+              ORDER BY total_request DESC
+              LIMIT 10
+            ```
+
+        ### 1.4. DNS Problem (Being Poisoned)
+
+        - Not sure how to check about this
+
+        ## 2. High Bandwidth - Total, ResBody, ReqBody
+
+        ### 2.1. Observation
+
+        - Overall
+          - ```sql
+              -- 2. General Bandwidth
+              SELECT
+              sum(resp_size) as total_bandwidth,
+              sum(resp_body_size) as body_bandwidth,
+              sum(req_size) as req_bandwidth
+              FROM reqs
+            ```
+
+        ### 2.2. Under Attack (Such as cc attack)
+
+        - Bandwidth X IP - Check individual IP bandwidth usage, probably need to limit I download as well.
+          - ```sql
+                -- 2.2.1. Bandwidth from each IP
+                SELECT
+                client_ip,
+                sum(resp_size) as total_bandwidth
+                FROM reqs
+                GROUP BY client_ip
+                ORDER BY total_bandwidth DESC
+                LIMIT 10
+            ```
+        - Bandwidth X Country - More toward check for do we need to deploy more server to the country or not.
+          - ```sql
+              -- 2.2.2. Bandwidth from each country
+              SELECT
+              client_country,
+              sum(resp_size) as total_bandwidth
+              FROM reqs
+              GROUP BY client_country
+              ORDER BY total_bandwidth DESC
+              LIMIT 10
+            ```
+        - Bandwidth X Cache Rate - Check if the cache rate is too low, then probably need to increase the cache rate.
+          - ```sql
+              -- 2.2.3. Bandwidth from each cache rate
+              SELECT
+              upstream_cache_status,
+              sum(resp_size) as total_bandwidth
+              FROM reqs
+              GROUP BY upstream_cache_status
+              ORDER BY total_bandwidth DESC
+              LIMIT 10
+            ```
+        - Bandwidth X URI - See which URI have more bandwidth, then check if the URI is under attack or not
+
+        ### 2.3. It just a normal day
+
+        - I cant imagine a normal day that have high bandwidth, but if there is, then probably need to check the bandwidth usage by IP, Country, Cache Rate, and URI.
+
+        ## 3. High Latency
+
+        ### 3.1. Observation
+
+        - Overall
+          - ```sql
+              -- 3. General Latency
+              SELECT
+                avg(latency_ms) as avg_latency,
+                max(latency_ms) as max_latency,
+                min(latency_ms) as min_latency
+                FROM reqs
+                ;
+            ```
+          - 90/95 percentile is not doable
+
+        ### 3.2. Under Attack
+
+        - Latency high with much request, could be under attacking
+
+        ### 3.3. Server slowdown
+
+        - Latency High but request not much with bandwidth look ok, probably need to check the server performance
+        - Upstream IO traffic time- Check if the upstream IO traffic is it too high, then probably need to check the upstream server
+
+        - Latency X Country - Check if the latency just happened on some specific country
+        - Latency X IP - See which client experience high latency
+        - Latency X User Agent - See which device experience high latency
+        - Latency X URI - Check which endpoint experience high latency
+
+        ## 4. High Error
+
+        ### 4.1. Observation
+
+        - Overall
+          - ```sql
+              -- 4. General Error
+              SELECT
+              sum(is_status_4xx) + sum(is_status_5xx) as status_4xx5xx,
+              sum(is_status_4xx) + sum(is_status_5xx) / count(*) as status_4xx5xx_rate,
+              sum(is_status_3xx) as status_3xx,
+              sum(is_status_4xx) as status_4xx,
+              sum(is_status_5xx) as status_5xx
+              FROM reqs
+            ```
+          - error rate is not countable, as it doesnt perform divide
+
+        ### 4.2. 4XX & 5XX
+
+        - Error X Req - Check if the increase in error is it normal due to the increate in request, probabily need determine with error as well
+        - Error X SSL, TLS - Check if the error is it due to the old SSL, TLS version, if so just block the old version
+          - ```sql
+              -- 4.2.1. Error from each SSL, TLS version
+              SELECT
+                  http_ver,
+                  tls_ver,
+                  sum(is_status_4xx) + sum(is_status_5xx) as error_count,
+                  count(*) as request_count
+              FROM reqs
+              GROUP BY http_ver, tls_ver
+              ORDER BY request_count DESC
+              LIMIT 20;
+            ```
+        - Error X IP - See which IP have more error, then see either to block or further investigation required
+        - Error X Country - See which country have more error, we can ban the country if there is too much error or see is there any adjustment/fix to the country
+        - Error X User Agent - See which User Agent (Could be browser, phone, etc) have more error, then check if the page need to be fix or need to block the user agent
+        - RateError(429) X IP X URI - See which IP and URI have more rate error, then check if the IP and URI is under attack or not
+          - ```sql
+              -- 4.2.5. Rate Error from each IP and URI
+              SELECT
+              client_ip,
+              uri,
+              count(*) as error_count
+              FROM reqs
+              WHERE is_status_429 is true
+              GROUP BY client_ip, uri
+              ORDER BY error_count DESC
+              LIMIT 20;
+            ```
+        - UnauthorizedCalls(401) X IP X URI - See which IP and URI have more unauthorized error, then check if the IP and URI is under attack or not
+          - ```sql
+              -- 4.2.6. Unauthorized Calls from each IP and URI
+              SELECT
+              client_ip,
+              uri,
+              count(*) as error_count
+              FROM reqs
+              WHERE is_status_401 is true
+              GROUP BY client_ip, uri
+              ORDER BY error_count DESC
+              LIMIT 20;
+            ```
+        - ForbiddenCalls(403) X IP X URI - See which IP and URI have more forbidden error, then check if the IP and URI is under attack or not
+          - ```sql
+              -- 4.2.7. Forbidden Calls from each IP and URI
+              SELECT
+              client_ip,
+              uri,
+              count(*) as error_count
+              FROM reqs
+              WHERE is_status_403 is true
+              GROUP BY client_ip, uri
+              ORDER BY error_count DESC
+              LIMIT 20;
+            ```
+
+
+        ## 5. High Connection - Active, Waiting, Writing, Reading
+
+        ### 5.1. Observation
+
+        - Overall
+          - ```sql
+              -- 5. General Connection
+              SELECT
+              sum(active_conns) as active,
+              sum(waiting_conns) as waiting,
+              sum(writing_conns) as writing,
+              sum(reading_conns) as reading
+              FROM http
+            ```
+
+        ### 5.2. Someone try to extablish as many connection as possible
+
+        ## 6. Upstream Load
+
+        ### 6.1. Observation
+
+        - Overall
+          - ```sql
+              -- 6. General Upstream Load
+              SELECT
+              sum(upstream_byte_total) as upstream_total,
+              sum(upstream_byte_sent) as upstream_ingress,
+              sum(upstream_byte_received) as upstream_egress
+              FROM reqs
+            ```
+        ### Upstream Connect Timer
+
+        - Average Upstream Connect Timer - Check if the average upstream connect timer is too high, then probably need to check the upstream server
+          - ```sql
+              -- 6.1.1. Average Upstream Connect Timer
+              SELECT
+              sum(upstream_connect_timer_ms) as upstream_connect_timer,
+              avg(upstream_connect_timer_ms) as avg_upstream_connect_timer
+              FROM reqs
+            ```
+
+        ## 7. Cache
+
+        ### 7.1. Observation
+
+        - Overall
+          - ```sql
+              -- 7. General Cache
+              SELECT
+              upstream_cache_status,
+              count(*) as total_request
+              FROM reqs
+              GROUP BY upstream_cache_status
+            ```
+
+        - Cache Miss Rate - Check if the cache miss rate is too high, then probably need to increase the cache miss rate
+      </script>
+    </div>
+  </body>
+</html>

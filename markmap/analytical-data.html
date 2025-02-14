@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markmap</title>
+    <style>
+      svg.markmap {
+        width: 100%;
+        height: 100vh;
+      }
+    </style>
+    <script>
+      window.markmap = {
+        /** @type AutoLoaderOptions */
+        autoLoader: {
+          toolbar: true, // Enable toolbar
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+  </head>
+  <body>
+    <h1 style="text-align: center"><a href="/">Homepage</a></h1>
+    <h2 style="text-align: center">Analytical Data Mindmap</h2>
+    <div class="markmap">
+      <script type="text/template">
+        ---
+        title: AnalyticalData
+        markmap:
+          initialExpandLevel: 4
+          colorFreezeLevel: 3
+          maxWidth: 300
+          embedAssets: true
+        ---
+
+        # AnalyticalData
+
+        Perform in depth analysis on the data to provide the insight and recommendation for the business.
+
+        ## 1. Security
+
+        <!-- ### 1.1. Protocol Security
+
+        - problem: We are not sure will the client potocol will affect the error rate
+        - visualization: A bar graph of each protocol combination with error rate
+          - analytical category: protocol combination
+            - http_ver: [<1.1, 1.1, 2.0]
+            - tls_ver: [<1.2, 1.2, 1.3]
+          - response metric: error rate
+            - error_rate: [status>= 400]
+        - database:
+          - field:
+            - http_ver: FLOAT
+            - tls_ver: FLOAT
+            - status: INTEGER
+          - rowSize:
+            - Total = 4 bytes (http_ver) + 4 bytes (tls_ver) + 4 bytes (status) = 12 bytes per row
+        - scenarioSize
+          - Assume:
+            - Unique Visitors: 1,000 per day
+            - Average Page Views per Visitor: 5
+            - Request per page: 1
+          - Calculation:
+            - Total Page Views/day: 1,000 UV 5 PV = 5,000 PV
+            - Total Request/day: 5,000 PV 1 request = 5,000 request
+            - Total Row/day: 5,000 request 12 bytes = 60,000 bytes
+            - Total Storage/day: 60,000 bytes 1,000 days = 60,000,000 bytes ~ 60MB/day
+            - Total Storage/month: 60MB/day 30 days = 1.8GB/month
+        - sql:
+          - ```sql
+              SELECT
+                  http_ver,
+                  tls_ver,
+                  count(*) as request_count,
+                  sum(CASE WHEN status >= 400 THEN 1 ELSE 0 END) as error_count
+              FROM reqs
+              GROUP BY http_ver, tls_ver
+              ORDER BY request_count DESC;
+            ``` -->
+
+        ### 1.1. Proxy Abuse Detection
+
+        - problem: We want to find out if the client ip is coming from lot of different country, potential is a proxy abuse, as this could be a preparation for a DDoS attack
+        - visualization: A bar graph of each client ip with distinct different_countries=
+          - analytical category:
+            - client ip
+          - response metric:
+            - number of different countries
+            - total requests
+        - database:
+          - field:
+            - client_ip: STRING[15] (IPv4)
+            - client_country: STRING[2]
+          - rowSize:
+            - Total = 15 bytes (client_ip) + 2 bytes (client_country) = 17 bytes per row
+        - sql:
+          - ```sql
+              SELECT
+                client_ip,
+                count(DISTINCT client_country) as different_countries,
+                count(*) as total_requests
+              FROM reqs
+              GROUP BY client_ip
+              HAVING count(DISTINCT client_country) > 1
+              ORDER BY different_countries DESC;
+            ```
+
+        ## 2. Know Your Customer
+
+        ### 2.1. Geographic Unique Visitor
+
+        - problem: We would like to know where did our customer come from and the country bandwidth usage find potential new customer. Also it will be great if able to know how was the latency to decide next CDN placement.
+        - target:
+          - See if which country perform download the most to use cache or add server to reduce the donloading
+          - Check which country have higher latency to consider about to deploy CDN in that country
+          - Understand more about the audience and possible to localize the website for those user
+        - visualization: A world map with the number of requests, latency, and bandwidth usage from each country,
+        - database:
+          - field:
+            - client_country: STRING[2]
+            - latency_ms: INTEGER
+            - total_size: INTEGER
+          - rowSize:
+            - Total = 2 bytes (client_country) + 4 bytes (latency_ms) + 4 bytes (total_size) = 10 bytes per row
+        - sql:
+          - ```sql
+              SELECT
+                client_country,
+                count(*) as total_requests
+              FROM reqs
+              GROUP BY client_country
+              ORDER BY total_requests DESC;
+            ```
+
+        ### 2.3. Popular URI Analysis
+
+        - problem: We would like to know which URI is the most popular and have how many unique visitors
+        - database:
+          - field:
+            - uri: STRING[255]
+          - rowSize:
+            - Total = 255 bytes (uri) = 255 bytes per row
+        - sql:
+          - ```sql
+              SELECT
+                  uri,
+                count(*) as total_requests,
+                count(DISTINCT client_ip) as unique_visitors
+            FROM reqs
+            GROUP BY uri
+            ORDER BY total_requests DESC;
+        ```
+
+        ### 2.4. First Landing Page Analysis
+
+        - problem: To know which page is the first page that customer visit
+        - target:
+          - To know which page is the first page that customer visit
+          - To know that how much error produce from the first page
+        - visualization: A bar graph of each page with the number of first time visitors, unique visitors, and average latency
+          - analytical category:
+            - uri
+          - response metric:
+            - number of first time visitors
+            - number of unique visitors
+            - average latency
+        - database:
+          - field:
+            - client_ip: STRING[15] (IPv4)
+            - uri: STRING[255]
+            - time_local: DATETIME
+          - rowSize:
+            - Total = 15 bytes (client_ip) + 255 bytes (uri) + 8 bytes (time_local) = 278 bytes per row
+        - sql:
+          - ```sql
+              WITH first_hits AS (
+                SELECT
+                    client_ip,
+                    uri,
+                    time_local,
+                    ROW_NUMBER() OVER (PARTITION BY client_ip ORDER BY time_local) as hit_number
+                FROM reqs
+              )
+              SELECT
+                uri as landing_page,
+                count(*) as first_time_visitors,
+                count(DISTINCT client_ip) as unique_visitors,
+                avg(latency_ms) as avg_load_time,
+                status
+              FROM first_hits f
+              JOIN reqs r ON f.client_ip = r.client_ip
+                AND f.time_local = r.time_local
+                AND f.uri = r.uri
+              WHERE hit_number = 1
+              GROUP BY uri
+              HAVING count(*) > 10
+              ORDER BY first_time_visitors DESC;
+            ```
+
+        ## 3. Database Calculation
+
+        - field:
+          - client_ip: STRING[15] (IPv4)
+          - client_country: STRING[2]
+          - uri: STRING[255]
+          - time_local: DATETIME
+          - status: INTEGER
+          - latency_ms: INTEGER
+          - total_size: INTEGER
+        - rowSize:
+          - Total = 15 bytes (client_ip) + 2 bytes (client_country) + 255 bytes (uri) + 8 bytes (time_local) + 4 bytes (status) + 4 bytes (latency_ms) + 4 bytes (total_size) = 289 bytes per row
+        - scenario1
+          - Assume:
+            - Unique Visitors: 1,000 per day
+            - Average Page Views per Visitor: 5
+            - Request per page: 1
+            - Total Page Views/day: 1,000 UV 5 PV = 5,000 PV
+            - Total Request/day: 5,000 PV 1 request = 5,000 request
+          - Calculation:
+            - Total Row/day: 5,000 request 289 bytes = 1,445,000 bytes
+            - Total Storage/day: 1,445,000 bytes 1,000 days = 1,445,000,000 bytes ~ 1.445GB/day
+            - Total Storage/month: 1.445GB/day 30 days = 43.35GB/mont
+        - scenario2
+          - Assume:
+            - Total Request/day: 500,000 request
+          - Calculation:
+            - Total Row/day: 500,000 request 289 bytes = 144,500,000 bytes
+            - Total Storage/day: 144,500,000 bytes 1,000 days = 144,500,000,000 bytes ~ 144.5GB/day
+            - Total Storage/month: 144.5GB/day 30 days = 4,335GB/month
+      </script>
+    </div>
+  </body>
+</html>
